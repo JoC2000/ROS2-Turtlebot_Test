@@ -1,5 +1,5 @@
 # Use ROS Humble image
-FROM ros:humble-ros-base:latest
+FROM ros:humble-ros-base
 
 # Avoid prompts
 ENV DEBIAN_FRONTEND=noninteractive
@@ -17,9 +17,15 @@ RUN apt-get update && apt-get install -y\
     ros-humble-turtlebot4-ignition-bringup \
     ros-humble-turtlebot4-ignition-gui-plugins \
     ros-humble-rplidar-ros \
-    ros-dev-tools && sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list' \
-    && wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add - \
-    && apt-get install ignition-fortress && rm -rf /var/lib/apt/lists/*
+    ros-dev-tools \
+    gnupg2 \
+    wget \
+    lsb-release \
+    curl \
+    && curl -sSL http://packages.osrfoundation.org/gazebo.key | apt-key add - \
+    && echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" > /etc/apt/sources.list.d/gazebo-stable.list \
+    && apt-get install -y ignition-fortress \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ros2_ws/src
 
@@ -31,7 +37,7 @@ COPY ./turtlebot_test/ ./turtlebot_test/
 COPY ./src ./src/
 
 # Install dependencies
-RUN rm -rf /etc/ros/rosdep/sources.lists.d/20-default.list && \
+RUN rm -rf /etc/ros/rosdep/sources.list.d/20-default.list && \
     rosdep init && rosdep update && \
     rosdep install --from-paths . --ignore-src -y
 
