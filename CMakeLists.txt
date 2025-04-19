@@ -18,7 +18,8 @@ find_package(std_msgs REQUIRED)
 # Python packages
 ament_python_install_package(${PROJECT_NAME})
 
-
+# launch file
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
