@@ -13,10 +13,20 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
-find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 # Python packages
 ament_python_install_package(${PROJECT_NAME})
+
+# C++ packages
+add_executable(initial_pose src/initial_pose.cpp)
+ament_target_dependencies(
+  initial_pose
+  rclcpp
+  geometry_msgs
+)
+
+install(TARGETS initial_pose DESTINATION lib/${PROJECT_NAME})
 
 # launch file
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
