@@ -1,8 +1,24 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch_ros.actions import Node
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from ament_index_python.packages import get_package_share_directory
+
+ARGUMENTS = [
+    DeclareLaunchArgument('rviz', default_value='true',
+                          choices=['true', 'false'], description='Launch RViz'),
+    DeclareLaunchArgument('world', default_value='maze',
+                          description='World to load'),
+    DeclareLaunchArgument('x', default_value='0.0',
+                          description='Initial x position'),
+    DeclareLaunchArgument('y', default_value='0.0',
+                          description='Initial y position'),
+    DeclareLaunchArgument('theta', default_value='0.0',
+                          description='Initial theta rotation'),
+    DeclareLaunchArgument('use_sim_time', default_value='true',
+                          choices=['true', 'false'], description='Use simulation time'),
+]
 
 def generate_launch_description():
     turtlebot4_ignition_package = get_package_share_directory('turtlebot4_ignition_bringup')
@@ -14,8 +30,11 @@ def generate_launch_description():
     ignition = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([ignition_launch]),
         launch_arguments=[
-            ('world', 'maze'),
-            ('rviz', 'true')
+            ('world', LaunchConfiguration('world')),
+            ('rviz', LaunchConfiguration('rviz')),
+            ('x', LaunchConfiguration('x')),
+            ('y', LaunchConfiguration('y')),
+            ('theta', LaunchConfiguration('theta')),
         ]
     )
 
@@ -23,10 +42,29 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([navigation_launch]),
         launch_arguments=[
             ('map', PathJoinSubstitution([turtlebot4_navigation_package, 'maps', 'maze.yaml'])),
+            ('use_sim_time', LaunchConfiguration('use_sim_time')),
         ]
     )
 
-    ld = LaunchDescription()
+    initial_pose = TimerAction(
+        period=3.0,
+        actions=[
+            Node(
+                package='turtlebot_test',
+                executable='initial_pose',
+                name='initial_pose',
+                output='screen',
+                parameters=[{
+                    'x': LaunchConfiguration('x'),
+                    'y': LaunchConfiguration('y'),
+                    'theta': LaunchConfiguration('theta'),
+                    }]
+            )
+        ]
+    )
+
+    ld = LaunchDescription(ARGUMENTS)
     ld.add_action(ignition)
     ld.add_action(navigation)
+    ld.add_action(initial_pose)
     return ld
