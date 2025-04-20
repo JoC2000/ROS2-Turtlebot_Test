@@ -10,12 +10,12 @@ ARGUMENTS = [
                           choices=['true', 'false'], description='Launch RViz'),
     DeclareLaunchArgument('world', default_value='maze',
                           description='World to load'),
-    DeclareLaunchArgument('x', default_value='0.0',
+    DeclareLaunchArgument('x', default_value='-9.0',
                           description='Initial x position'),
-    DeclareLaunchArgument('y', default_value='0.0',
+    DeclareLaunchArgument('y', default_value='8.0',
                           description='Initial y position'),
-    DeclareLaunchArgument('theta', default_value='0.0',
-                          description='Initial theta rotation'),
+    DeclareLaunchArgument('yaw', default_value='3.14',
+                          description='Initial yaw rotation'),
     DeclareLaunchArgument('use_sim_time', default_value='true',
                           choices=['true', 'false'], description='Use simulation time'),
 ]
@@ -34,7 +34,7 @@ def generate_launch_description():
             ('rviz', LaunchConfiguration('rviz')),
             ('x', LaunchConfiguration('x')),
             ('y', LaunchConfiguration('y')),
-            ('theta', LaunchConfiguration('theta')),
+            ('yaw', LaunchConfiguration('yaw')),
         ]
     )
 
@@ -57,7 +57,7 @@ def generate_launch_description():
                 parameters=[{
                     'x': LaunchConfiguration('x'),
                     'y': LaunchConfiguration('y'),
-                    'theta': LaunchConfiguration('theta'),
+                    'yaw': LaunchConfiguration('yaw'),
                     }]
             )
         ]
