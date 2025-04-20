@@ -13,12 +13,12 @@ int main(int argc, char *argv[])
 
     node->declare_parameter("x", 0.0);
     node->declare_parameter("y", 0.0);
-    node->declare_parameter("theta", 0.0);
+    node->declare_parameter("yaw", 0.0);
 
-    double x, y, theta;
+    double x, y, yaw;
     node->get_parameter("x", x);
     node->get_parameter("y", y);
-    node->get_parameter("theta", theta);
+    node->get_parameter("yaw", yaw);
 
     RCLCPP_INFO(node->get_logger(), "Publishing initial pose...");
     std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
     msg.pose.pose.position.z = 0.0;
     msg.pose.pose.orientation.x = 0.0;
     msg.pose.pose.orientation.y = 0.0;
-    msg.pose.pose.orientation.z = std::sin(theta / 2.0);
-    msg.pose.pose.orientation.w = std::cos(theta / 2.0);
+    msg.pose.pose.orientation.z = std::sin(yaw / 2.0);
+    msg.pose.pose.orientation.w = std::cos(yaw / 2.0);
     msg.pose.covariance = {
         0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
         0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
