@@ -2,6 +2,7 @@
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include  <thread>
 #include <chrono>
+#include <cmath>
 
 int main(int argc, char *argv[])
 {
@@ -10,6 +11,15 @@ int main(int argc, char *argv[])
     auto node = rclcpp::Node::make_shared("initial_pose_node");
     auto publisher = node->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("/initialpose", 10);
 
+    node->declare_parameter("x", 0.0);
+    node->declare_parameter("y", 0.0);
+    node->declare_parameter("theta", 0.0);
+
+    double x, y, theta;
+    node->get_parameter("x", x);
+    node->get_parameter("y", y);
+    node->get_parameter("theta", theta);
+
     RCLCPP_INFO(node->get_logger(), "Publishing initial pose...");
     std::this_thread::sleep_for(std::chrono::seconds(3));
 
@@ -17,13 +27,13 @@ int main(int argc, char *argv[])
 
     msg.header.stamp = node->get_clock()->now();
     msg.header.frame_id = "map";
-    msg.pose.pose.position.x = -5.0;
-    msg.pose.pose.position.y = 0.0;
+    msg.pose.pose.position.x = x;
+    msg.pose.pose.position.y = y;
     msg.pose.pose.position.z = 0.0;
     msg.pose.pose.orientation.x = 0.0;
     msg.pose.pose.orientation.y = 0.0;
-    msg.pose.pose.orientation.z = 0.0;
-    msg.pose.pose.orientation.w = 1.0;
+    msg.pose.pose.orientation.z = std::sin(theta / 2.0);
+    msg.pose.pose.orientation.w = std::cos(theta / 2.0);
     msg.pose.covariance = {
         0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
         0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
