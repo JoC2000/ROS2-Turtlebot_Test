@@ -14,19 +14,32 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+
+include_directories(include)
 
 # Python packages
 ament_python_install_package(${PROJECT_NAME})
 
 # C++ packages
-add_executable(initial_pose src/initial_pose.cpp)
+set(SOURCES
+    src/initial_pose.cpp
+    src/solver_utils.cpp
+)
+set(TARGET SolverNode)
+add_executable(${TARGET} ${SOURCES})
 ament_target_dependencies(
-  initial_pose
+  ${TARGET}
   rclcpp
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
   geometry_msgs
 )
 
-install(TARGETS initial_pose DESTINATION lib/${PROJECT_NAME})
+install(TARGETS ${TARGET} DESTINATION lib/${PROJECT_NAME})
 
 # launch file
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
