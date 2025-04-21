@@ -5,35 +5,35 @@
 #include <queue>
 #include <string>
 
-class Node {
+class Agent {
     public:
         std::pair<int, int> state;
-        Node* parent;
+        Agent* parent;
         std::string action;
     
-        explicit Node(std::pair<int, int> state, Node* parent = nullptr, std::string action = "");
+        explicit Agent(std::pair<int, int> state, Agent* parent = nullptr, std::string action = "");
 };
 
 class StackFrontier {
     public:
         StackFrontier();
-        void add(Node* node);
+        void add(Agent* node);
         bool contains_state(const std::pair<int, int> &state) const;
         bool empty() const;
-        Node *remove();
+        Agent *remove();
     private:
-        std::vector<Node*> frontier;
+        std::vector<Agent*> frontier;
 };
 
 class QueueFrontier {
     public:
         QueueFrontier();
-        void add(Node* node);
+        void add(Agent* node);
         bool contains_state(const std::pair<int, int> &state) const;
         bool empty() const;
-        Node *remove();
+        Agent *remove();
     private:
-        std::queue<Node*> frontier;
+        std::queue<Agent*> frontier;
 };
 
 #endif
