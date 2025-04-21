@@ -17,6 +17,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 include_directories(include)
 
@@ -27,6 +28,7 @@ ament_python_install_package(${PROJECT_NAME})
 set(SOURCES
     src/initial_pose.cpp
     src/solver_utils.cpp
+    src/maze_solver.cpp
 )
 set(TARGET SolverNode)
 add_executable(${TARGET} ${SOURCES})
@@ -37,6 +39,7 @@ ament_target_dependencies(
   tf2_ros
   tf2_geometry_msgs
   geometry_msgs
+  nav_msgs
 )
 
 install(TARGETS ${TARGET} DESTINATION lib/${PROJECT_NAME})
