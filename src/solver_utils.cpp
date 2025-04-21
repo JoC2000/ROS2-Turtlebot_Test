@@ -1,12 +1,12 @@
 #include <turtlebot_test/solver_utils.hpp>
 #include <stdexcept>
 
-Node::Node(std::pair<int, int> state, Node* parent, std::string action)
+Agent::Agent(std::pair<int, int> state, Agent* parent, std::string action)
     : state(state), parent(parent), action(std::move(action)) {}
 
 StackFrontier::StackFrontier() = default;
 
-void StackFrontier::add(Node* node) {
+void StackFrontier::add(Agent* node) {
     frontier.push_back(node);
 }
 
@@ -23,23 +23,23 @@ bool StackFrontier::empty() const {
     return frontier.empty();
 }
 
-Node* StackFrontier::remove() {
+Agent* StackFrontier::remove() {
     if (empty()) {
         throw std::runtime_error("Empty stack");
     }
-    Node* node = frontier.back();
+    Agent* node = frontier.back();
     frontier.pop_back();
     return node;
 }
 
 QueueFrontier::QueueFrontier() = default;
 
-void QueueFrontier::add(Node* node) {
+void QueueFrontier::add(Agent* node) {
     frontier.push(node);
 }
 
 bool QueueFrontier::contains_state(const std::pair<int, int> &state) const {
-    std::queue<Node*> temp = frontier;
+    std::queue<Agent*> temp = frontier;
     while (!temp.empty()) {
         if (temp.front()->state == state) {
             return true;
@@ -53,11 +53,11 @@ bool QueueFrontier::empty() const {
     return frontier.empty();
 }
 
-Node*QueueFrontier::remove() {
+Agent*QueueFrontier::remove() {
     if (empty()) {
         throw std::runtime_error("Empty queue");
     }
-    Node* node = frontier.front();
+    Agent* node = frontier.front();
     frontier.pop();
     return node;
 }
