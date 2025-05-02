@@ -21,7 +21,7 @@ class MazeSolver : public rclcpp::Node {
     private:
         // Map callback function will receive a pointer to OccupancyGrid of Map
         void map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
-        void run_solver();
+        // Return a pair of coordinates of the robot cell
         std::pair<int, int> get_robot_cell();
         // Get neighbors is a vector of pairs containing a string and a pair of coordinates
         // Function will receive a referente to the state and grid of map
@@ -34,6 +34,8 @@ class MazeSolver : public rclcpp::Node {
         PathType reconstruct_path(Agent* node);
         // Will publish velocity commands to turtlebot to run to the goal pose
         void publish_cmd_vel(const std::pair<int, int> &cell);
+
+        void run_solver();
 
         rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_subscriber_;
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
