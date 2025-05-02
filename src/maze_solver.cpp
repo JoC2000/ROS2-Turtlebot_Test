@@ -3,8 +3,6 @@
 #include <set>
 #include <chrono>
 
-using namespace std::chrono_literals;
-
 MazeSolver::MazeSolver() : Node("maze_solver") {
     // Subscribe to map topic in order to get map info like origin, grid, resolution, etc
     map_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
@@ -15,9 +13,9 @@ MazeSolver::MazeSolver() : Node("maze_solver") {
     cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
     // tf buffer and listener to get actual robot pose relative to the map frame
+    // Using shared pointer in case another node needs to access the same buffer
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
-
     RCLCPP_INFO(this->get_logger(), "MazeSolver node initialized");
 }
 
@@ -103,7 +101,7 @@ void MazeSolver::run_solver() {
     }
 }
 
-std::vector<std::pair<std::string, std::pair<int,int>>> MazeSolver::get_neighbors(
+ActionNeighborsType MazeSolver::get_neighbors(
     const std::pair<int, int> &state,
     const std::vector<std::vector<int>> &grid
 ) {
@@ -128,8 +126,8 @@ std::vector<std::pair<std::string, std::pair<int,int>>> MazeSolver::get_neighbor
     return result;
 }
 
-std::vector<std::pair<int, int>> MazeSolver::reconstruct_path(Agent* node) {
-    std::vector<std::pair<int, int>> path;
+PathType MazeSolver::reconstruct_path(Agent* node) {
+    PathType path;
     while (node) {
         path.push_back(node->state);
         node = node->parent;
