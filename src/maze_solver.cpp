@@ -50,6 +50,48 @@ std::pair<int, int> MazeSolver::get_robot_cell() {
     }
 }
 
+ActionNeighborsType MazeSolver::get_neighbors(
+    const std::pair<int, int> &state,
+    const std::vector<std::vector<int>> &grid
+) {
+    std::vector<std::pair<std::string, std::pair<int, int>>> result;
+    int i = state.first;
+    int j = state.second;
+
+    std::vector<std::pair<std::string, std::pair<int, int>>> directions = {
+        {"UP", {i -1, j}}, {"DOWN", {i + 1, j}},
+        {"LEFT", {i, j - 1}}, {"RIGHT", {i, j + 1}}
+    };
+
+    for (const auto& [action, neighbor] : directions) {
+        auto [ni, nj] = neighbor;
+        if (ni >= 0 && ni < static_cast<int>(grid.size()) &&
+            nj >= 0 && nj < static_cast<int>(grid[0].size()) &&
+            grid[ni][nj] == 0) 
+            {
+                result.push_back({action, {ni, nj}});
+            }
+    }
+    return result;
+}
+
+PathType MazeSolver::reconstruct_path(Agent* node) {
+    PathType path;
+    while (node) {
+        path.push_back(node->state);
+        node = node->parent;
+    }
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+
+void MazeSolver::publish_cmd_vel(const std::pair<int, int> &) {
+    geometry_msgs::msg::Twist msg;
+    msg.linear.x = 0.1;
+    msg.angular.z = 0.0;
+    cmd_vel_pub_->publish(msg);
+}
+
 void MazeSolver::run_solver() {
     if (!map_received_) return;
 
@@ -99,46 +141,4 @@ void MazeSolver::run_solver() {
     } else {
         RCLCPP_WARN(this->get_logger(), "No solution found");
     }
-}
-
-ActionNeighborsType MazeSolver::get_neighbors(
-    const std::pair<int, int> &state,
-    const std::vector<std::vector<int>> &grid
-) {
-    std::vector<std::pair<std::string, std::pair<int, int>>> result;
-    int i = state.first;
-    int j = state.second;
-
-    std::vector<std::pair<std::string, std::pair<int, int>>> directions = {
-        {"UP", {i -1, j}}, {"DOWN", {i + 1, j}},
-        {"LEFT", {i, j - 1}}, {"RIGHT", {i, j + 1}}
-    };
-
-    for (const auto& [action, neighbor] : directions) {
-        auto [ni, nj] = neighbor;
-        if (ni >= 0 && ni < static_cast<int>(grid.size()) &&
-            nj >= 0 && nj < static_cast<int>(grid[0].size()) &&
-            grid[ni][nj] == 0) 
-            {
-                result.push_back({action, {ni, nj}});
-            }
-    }
-    return result;
-}
-
-PathType MazeSolver::reconstruct_path(Agent* node) {
-    PathType path;
-    while (node) {
-        path.push_back(node->state);
-        node = node->parent;
-    }
-    std::reverse(path.begin(), path.end());
-    return path;
-}
-
-void MazeSolver::publish_cmd_vel(const std::pair<int, int> &) {
-    geometry_msgs::msg::Twist msg;
-    msg.linear.x = 0.1;
-    msg.angular.z = 0.0;
-    cmd_vel_pub_->publish(msg);
 }
