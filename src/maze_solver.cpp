@@ -32,10 +32,13 @@ void MazeSolver::map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
 
 std::pair<int, int> MazeSolver::get_robot_cell() {
     try {
+        // Transform from the robot frame to the map frame
         auto transform = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+        // Position of the robot relative to the map frame
         double x = transform.transform.translation.x;
         double y = transform.transform.translation.y;
 
+        // Get the map resolution and origin
         double resolution = current_map_.info.resolution;
         double origin_x = current_map_.info.origin.position.x;
         double origin_y = current_map_.info.origin.position.y;
@@ -54,11 +57,11 @@ ActionNeighborsType MazeSolver::get_neighbors(
     const std::pair<int, int> &state,
     const std::vector<std::vector<int>> &grid
 ) {
-    std::vector<std::pair<std::string, std::pair<int, int>>> result;
+    ActionNeighborsType result;
     int i = state.first;
     int j = state.second;
 
-    std::vector<std::pair<std::string, std::pair<int, int>>> directions = {
+    ActionNeighborsType directions = {
         {"UP", {i -1, j}}, {"DOWN", {i + 1, j}},
         {"LEFT", {i, j - 1}}, {"RIGHT", {i, j + 1}}
     };
@@ -85,11 +88,49 @@ PathType MazeSolver::reconstruct_path(Agent* node) {
     return path;
 }
 
-void MazeSolver::publish_cmd_vel(const std::pair<int, int> &) {
-    geometry_msgs::msg::Twist msg;
-    msg.linear.x = 0.1;
-    msg.angular.z = 0.0;
-    cmd_vel_pub_->publish(msg);
+std::pair<double, double> MazeSolver::grid_to_world(const std::pair<int, int> &cell) {
+    double resolution = current_map_.info.resolution;
+    double origin_x = current_map_.info.origin.position.x;
+    double origin_y = current_map_.info.origin.position.y;
+
+    int i = cell.first;
+    int j = cell.second;
+
+    double world_x = origin_x + j * resolution;
+    double world_y = origin_y + i * resolution;
+
+    return std::make_pair(world_x, world_y);
+}
+
+void MazeSolver::publish_cmd_vel(const std::pair<int, int> & target_cell) {
+    auto [goal_x, goal_y] = grid_to_world(target_cell);
+
+    geometry_msgs::msg::TransformStamped tf;
+
+    try {
+        tf = tf_buffer_-> lookupTransform("map", "base_link", tf2::TimePointZero);
+    } catch (const tf2::TransformException &ex) {
+        RCLCPP_WARN(this->get_logger(), "TF transform failed: %s", ex.what());
+        return;
+    }
+
+    double robot_x = tf.transform.translation.x;
+    double robot_y = tf.transform.translation.y;
+
+    double dx = goal_x - robot_x;
+    double dy = goal_y - robot_y;
+
+    double distance = std::hypot(dx, dy);   // Distance to the goal
+    double angle = std::atan2(dy, dx);      // Angle to the goal
+
+    geometry_msgs::msg::Twist cmd;
+
+    double p_value = 0.43; // Proportional gain
+
+    cmd.linear.x = std::min(0.3, p_value * distance); // Max speed
+    cmd.angular.z = p_value * angle;                  // Rotate towards the goal
+
+    cmd_vel_pub_->publish(cmd);
 }
 
 void MazeSolver::run_solver() {

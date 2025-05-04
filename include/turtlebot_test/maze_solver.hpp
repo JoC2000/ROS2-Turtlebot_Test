@@ -10,7 +10,7 @@
 #include <turtlebot_test/solver_utils.hpp>
 
 using namespace std::chrono_literals;
-using ActionNeighborsType = std::vector<std::pair<std::string, std::pair<int,int>>>;
+using ActionNeighborsType = std::vector<std::pair<std::string, std::pair<int, int>>>;
 using PathType = std::vector<std::pair<int, int>>;
 
 // Define Maze Solver node class
