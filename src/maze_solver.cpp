@@ -6,7 +6,7 @@
 MazeSolver::MazeSolver() : Node("maze_solver") {
     // Subscribe to map topic in order to get map info like origin, grid, resolution, etc
     map_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-        "map", 10, std::bind(&MazeSolver::map_callback, this, std::placeholders::_1)
+        "map", 100, std::bind(&MazeSolver::map_callback, this, std::placeholders::_1)
     );
 
     // Publisher to the velocity commands
@@ -25,6 +25,7 @@ MazeSolver::MazeSolver() : Node("maze_solver") {
 *  Calls the run_solver function
 */
 void MazeSolver::map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
+    RCLCPP_INFO(this->get_logger(), "Received map, width: %d, height: %d", msg->info.width, msg->info.height);
     current_map_ = *msg;
     map_received_ = true;
     run_solver();
@@ -125,16 +126,18 @@ void MazeSolver::publish_cmd_vel(const std::pair<int, int> & target_cell) {
 
     geometry_msgs::msg::Twist cmd;
 
-    double p_value = 0.43; // Proportional gain
+    double p_linear = 0.5; // Proportional gain
+    double p_angular = 1.0; // Proportional gain
 
-    cmd.linear.x = std::min(0.3, p_value * distance); // Max speed
-    cmd.angular.z = p_value * angle;                  // Rotate towards the goal
+    cmd.linear.x = std::min(0.3, p_linear * distance); // Max speed
+    cmd.angular.z = std::min(0.3 ,p_angular * angle);                  // Rotate towards the goal
 
     cmd_vel_pub_->publish(cmd);
 }
 
 void MazeSolver::run_solver() {
     if (!map_received_) return;
+    RCLCPP_INFO(this->get_logger(), "Running solver...");
 
     auto [start_i, start_j] = get_robot_cell();
     std::pair<int, int> start = {start_i, start_j};

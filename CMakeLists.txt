@@ -26,9 +26,10 @@ ament_python_install_package(${PROJECT_NAME})
 
 # C++ packages
 set(SOURCES
-    src/initial_pose.cpp
-    src/solver_utils.cpp
-    src/maze_solver.cpp
+    # src/initial_pose.cpp
+    # src/solver_utils.cpp
+    # src/maze_solver.cpp
+    src/main.cpp
 )
 set(TARGET SolverNode)
 add_executable(${TARGET} ${SOURCES})
