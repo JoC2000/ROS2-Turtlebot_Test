@@ -16,33 +16,28 @@ ARGUMENTS = [
                           description='Initial y position'),
     DeclareLaunchArgument('yaw', default_value='3.14',
                           description='Initial yaw rotation'),
-    DeclareLaunchArgument('use_sim_time', default_value='true',
-                          choices=['true', 'false'], description='Use simulation time'),
 ]
 
 def generate_launch_description():
     turtlebot4_ignition_package = get_package_share_directory('turtlebot4_ignition_bringup')
-    turtlebot4_navigation_package = get_package_share_directory('turtlebot4_navigation')
 
-    ignition_launch = PathJoinSubstitution([turtlebot4_ignition_package, 'launch', 'turtlebot4_ignition.launch.py'])
-    navigation_launch = PathJoinSubstitution([turtlebot4_navigation_package, 'launch', 'localization.launch.py'])
+    ignition_launch = PathJoinSubstitution([turtlebot4_ignition_package, 'launch', 'ignition.launch.py'])
+    robot_spawn = PathJoinSubstitution([turtlebot4_ignition_package, 'launch', 'turtlebot4_spawn.launch.py'])
 
     ignition = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([ignition_launch]),
         launch_arguments=[
-            ('world', LaunchConfiguration('world')),
+            ('world', LaunchConfiguration('world'))
+        ]
+    )
+    spawn = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([robot_spawn]),
+        launch_arguments=[
             ('rviz', LaunchConfiguration('rviz')),
             ('x', LaunchConfiguration('x')),
             ('y', LaunchConfiguration('y')),
             ('yaw', LaunchConfiguration('yaw')),
-        ]
-    )
-
-    navigation = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([navigation_launch]),
-        launch_arguments=[
-            ('map', PathJoinSubstitution([turtlebot4_navigation_package, 'maps', 'maze.yaml'])),
-            ('use_sim_time', LaunchConfiguration('use_sim_time')),
+            ('slam', 'true')
         ]
     )
 
@@ -65,6 +60,6 @@ def generate_launch_description():
 
     ld = LaunchDescription(ARGUMENTS)
     ld.add_action(ignition)
-    ld.add_action(navigation)
+    ld.add_action(spawn)
     # ld.add_action(initial_pose)
     return ld
