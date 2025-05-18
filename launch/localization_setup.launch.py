@@ -37,8 +37,7 @@ def generate_launch_description():
             ('x', LaunchConfiguration('x')),
             ('y', LaunchConfiguration('y')),
             ('yaw', LaunchConfiguration('yaw')),
-            ('localization', 'true'),
-            ('slam', 'true')
+            ('localization', 'true')
         ]
     )
 
