@@ -5,8 +5,10 @@
 
 MazeSolver::MazeSolver() : Node("maze_solver") {
     // Subscribe to map topic in order to get map info like origin, grid, resolution, etc
+    rclcpp::QoS qos(rclcpp::KeepLast(1));
+    qos.transient_local();
     map_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-        "map", 100, std::bind(&MazeSolver::map_callback, this, std::placeholders::_1)
+        "map", qos, std::bind(&MazeSolver::map_callback, this, std::placeholders::_1)
     );
 
     // Publisher to the velocity commands
