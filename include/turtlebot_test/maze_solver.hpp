@@ -42,8 +42,8 @@ class MazeSolver : public rclcpp::Node {
 
         rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_subscriber_;
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
-        std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
-        std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+        std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+        std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
 
         nav_msgs::msg::OccupancyGrid current_map_;
         bool map_received_ = false;

@@ -8,7 +8,7 @@ MazeSolver::MazeSolver() : Node("maze_solver") {
     rclcpp::QoS qos(rclcpp::KeepLast(1));
     qos.transient_local();
     map_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-        "map", qos, std::bind(&MazeSolver::map_callback, this, std::placeholders::_1)
+        "/map", qos, std::bind(&MazeSolver::map_callback, this, std::placeholders::_1)
     );
 
     // Publisher to the velocity commands
@@ -16,8 +16,8 @@ MazeSolver::MazeSolver() : Node("maze_solver") {
 
     // tf buffer and listener to get actual robot pose relative to the map frame
     // Using shared pointer in case another node needs to access the same buffer
-    tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
-    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+    tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_, this);
     RCLCPP_INFO(this->get_logger(), "MazeSolver node initialized");
 }
 
