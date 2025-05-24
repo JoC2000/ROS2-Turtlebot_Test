@@ -37,7 +37,8 @@ def generate_launch_description():
             ('x', LaunchConfiguration('x')),
             ('y', LaunchConfiguration('y')),
             ('yaw', LaunchConfiguration('yaw')),
-            ('localization', 'true')
+            ('localization', 'true'),
+            ('map', '/opt/ros/humble/share/turtlebot4_navigation/maps/maze.yaml')
         ]
     )
 
