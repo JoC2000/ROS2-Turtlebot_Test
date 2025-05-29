@@ -136,6 +136,7 @@ void MazeSolver::publish_cmd_vel(const std::pair<int, int> & target_cell) {
     cmd.linear.x = std::min(0.3, p_linear * distance); // Max speed
     cmd.angular.z = std::min(0.3 ,p_angular * angle);                  // Rotate towards the goal
 
+    RCLCPP_INFO(this->get_logger(), "Publishing cmd_vel: linear.x = %.2f, angular.z = %.2f", cmd.linear.x, cmd.angular.z);
     cmd_vel_pub_->publish(cmd);
 }
 
@@ -163,8 +164,9 @@ void MazeSolver::run_solver() {
     frontier.add(new Agent(start));
     std::set<std::pair<int, int>> explored;
     Agent* solution = nullptr;
-
+    int count = 0;
     while(!frontier.empty()) {
+        std::cout << "Iteration: " << count++ << std::endl;
         Agent* current = frontier.remove();
         if(current->state == goal) {
             solution = current;
