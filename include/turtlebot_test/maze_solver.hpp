@@ -16,7 +16,7 @@ using PathType = std::vector<std::pair<int, int>>;
 // Define Maze Solver node class
 class MazeSolver : public rclcpp::Node {
     public:
-        explicit MazeSolver();
+        explicit MazeSolver(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
 
     private:
         // Map callback function will receive a pointer to OccupancyGrid of Map

@@ -3,10 +3,11 @@
 #include <set>
 #include <chrono>
 
-MazeSolver::MazeSolver() : Node("maze_solver") {
+MazeSolver::MazeSolver(const rclcpp::NodeOptions &options) : Node("maze_solver", options) {
     // Subscribe to map topic in order to get map info like origin, grid, resolution, etc
     rclcpp::QoS qos(rclcpp::KeepLast(1));
     qos.transient_local();
+    this->set_parameter(rclcpp::Parameter("use_sim_time", true));
     map_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
         "/map", qos, std::bind(&MazeSolver::map_callback, this, std::placeholders::_1)
     );
@@ -48,6 +49,7 @@ std::pair<int, int> MazeSolver::get_robot_cell() {
 
         int i = static_cast<int>((y - origin_y) / resolution);
         int j = static_cast<int>((x - origin_x) / resolution);
+        RCLCPP_INFO(this->get_logger(), "Robot cell: (%d, %d)", i, j);
         return {i, j};
 
     } catch (const tf2::TransformException &ex) {
@@ -143,7 +145,7 @@ void MazeSolver::run_solver() {
 
     auto [start_i, start_j] = get_robot_cell();
     std::pair<int, int> start = {start_i, start_j};
-    std::pair<int, int> goal = {8.0, 9.0};
+    std::pair<int, int> goal = {3.0, 4.0};
 
     int width = current_map_.info.width;
     int height = current_map_.info.height;
