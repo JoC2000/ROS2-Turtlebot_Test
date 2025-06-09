@@ -28,7 +28,12 @@ MazeSolver::MazeSolver(const rclcpp::NodeOptions &options) : Node("maze_solver",
 *  Calls the run_solver function
 */
 void MazeSolver::map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
-    RCLCPP_INFO(this->get_logger(), "Received map, width: %d, height: %d", msg->info.width, msg->info.height);
+    RCLCPP_INFO(this->get_logger(), "Map received: resolution=%.6f, origin=(%.2f, %.2f), width=%d, height=%d",
+    msg->info.resolution,
+    msg->info.origin.position.x,
+    msg->info.origin.position.y,
+    msg->info.width,
+    msg->info.height);
     current_map_ = *msg;
     map_received_ = true;
     run_solver();
@@ -101,8 +106,11 @@ std::pair<double, double> MazeSolver::grid_to_world(const std::pair<int, int> &c
     int i = cell.first;
     int j = cell.second;
 
-    double world_x = origin_x + j * resolution;
-    double world_y = origin_y + i * resolution;
+    RCLCPP_INFO(this->get_logger(), "grid_to_world: resolution=%.6f, origin=(%.2f, %.2f), cell=(%d, %d)",
+    resolution, origin_x, origin_y, i, j);
+
+    double world_x = origin_x + (j + 0.5) * resolution;
+    double world_y = origin_y + (i + 0.5) * resolution;
 
     return std::make_pair(world_x, world_y);
 }
@@ -139,13 +147,26 @@ void MazeSolver::publish_cmd_vel(const std::pair<int, int> & target_cell) {
     double distance = std::hypot(dx, dy);   // Distance to the goal
     double angle = std::atan2(dy, dx);      // Angle to the goal
 
+    rclcpp::Time now = this->now();
+    double dt = (last_cmd_time_.nanoseconds() > 0) ? (now - last_cmd_time_).seconds() : 0.1;
+    last_cmd_time_ = now;
+
     geometry_msgs::msg::Twist cmd;
 
     double p_linear = 0.1; // Proportional gain
-    double p_angular = 0.05; // Proportional gain
+    double d_linear = 0.02;
     
-    cmd.linear.x = std::min(0.3, p_linear * distance); // Max speed
-    cmd.angular.z = std::clamp(p_angular * angle, -0.2, 0.2); // Rotate towards the goal
+    double p_angular = 0.05; // Proportional gain
+    double d_angular = 0.01;
+    
+    last_distance_e = distance;
+    last_angle_e = angle;
+
+    double linear_vel = p_linear * distance + d_linear * (distance - last_distance_e) / dt;
+    double angular_vel = p_angular * angle + d_angular * (angle - last_angle_e) / dt;
+
+    cmd.linear.x = std::clamp(linear_vel, -0.3, 0.3); // Max speed
+    cmd.angular.z = std::clamp(angular_vel, -0.1, 0.1); // Rotate towards the goal
 
     // RCLCPP_INFO(this->get_logger(), "Publishing cmd_vel: linear.x = %.2f, angular.z = %.2f", cmd.linear.x, cmd.angular.z);
     cmd_vel_pub_->publish(cmd);
@@ -159,8 +180,8 @@ void MazeSolver::run_solver() {
     auto [start_i, start_j] = get_robot_cell();
     std::pair<int, int> start = {start_i, start_j};
 
-    double goal_x_meters = -4.0;
-    double goal_y_meters = 5.0;
+    double goal_x_meters = -7.0;
+    double goal_y_meters = 7.0;
     std::pair<int, int> goal = world_to_grid(goal_x_meters, goal_y_meters);
     RCLCPP_INFO(this->get_logger(), "Start cell: (%d, %d), Goal cell: (%d, %d)", start_i, start_j, goal.first, goal.second);
     int width = current_map_.info.width;
@@ -183,7 +204,7 @@ void MazeSolver::run_solver() {
     Agent* solution = nullptr;
     int count = 0;
     while(!frontier.empty()) {
-        std::cout << "Iteration: " << count++ << std::endl;
+        count++;
         Agent* current = frontier.remove();
         if(current->state == goal) {
             solution = current;
@@ -201,16 +222,18 @@ void MazeSolver::run_solver() {
     }
 
     if (solution) {
-        RCLCPP_INFO(this->get_logger(), "Goal reached!");
+        RCLCPP_INFO(this->get_logger(), "Solution Found!");
+        RCLCPP_INFO(this->get_logger(), "Total iterations: %d", count);
         auto path = reconstruct_path(solution);
         rclcpp::Rate rate(2);
         for (const auto &cell : path) {
             if (!rclcpp::ok()) break;
             auto cell_m = grid_to_world(cell);
-            RCLCPP_INFO(this->get_logger(), "Moving to: (%d, %d)", cell_m.first, cell_m.second);
+            RCLCPP_INFO(this->get_logger(), "Moving to: (%.3f, %.3f)", cell_m.first, cell_m.second);
             publish_cmd_vel(cell);
             rate.sleep();
         }
+        RCLCPP_INFO(this->get_logger(), "Reached goal!");
     } else {
         RCLCPP_WARN(this->get_logger(), "No solution found");
     }
