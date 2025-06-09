@@ -175,7 +175,7 @@ void MazeSolver::run_solver() {
 
         explored.insert(current->state);
         for (const auto &[action, neighbor] : get_neighbors(current->state, grid)) {
-            if(!frontier.contains_state(neighbor) && explored.count(neighbor)) {
+            if(!frontier.contains_state(neighbor) && explored.count(neighbor) == 0) {
                 frontier.add(new Agent(neighbor, current, action));
             }
         }
@@ -184,9 +184,11 @@ void MazeSolver::run_solver() {
     if (solution) {
         RCLCPP_INFO(this->get_logger(), "Goal reached!");
         auto path = reconstruct_path(solution);
+        rclcpp::Rate rate(2);
         for (const auto &cell : path) {
+            if (!rclcpp::ok()) break;
             publish_cmd_vel(cell);
-            rclcpp::sleep_for(500ms);
+            rate.sleep();
         }
     } else {
         RCLCPP_WARN(this->get_logger(), "No solution found");
