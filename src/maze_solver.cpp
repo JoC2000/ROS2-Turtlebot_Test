@@ -130,8 +130,8 @@ void MazeSolver::publish_cmd_vel(const std::pair<int, int> & target_cell) {
 
     geometry_msgs::msg::Twist cmd;
 
-    double p_linear = 0.5; // Proportional gain
-    double p_angular = 1.0; // Proportional gain
+    double p_linear = 0.61; // Proportional gain
+    double p_angular = 0.05; // Proportional gain
 
     cmd.linear.x = std::min(0.3, p_linear * distance); // Max speed
     cmd.angular.z = std::min(0.3 ,p_angular * angle);                  // Rotate towards the goal
@@ -144,6 +144,7 @@ void MazeSolver::run_solver() {
     if (!map_received_) return;
     RCLCPP_INFO(this->get_logger(), "Running solver...");
 
+    std::vector<Agent *> allocated_agents;
     auto [start_i, start_j] = get_robot_cell();
     std::pair<int, int> start = {start_i, start_j};
     std::pair<int, int> goal = {3.0, 4.0};
@@ -161,7 +162,9 @@ void MazeSolver::run_solver() {
 
     // Create a queue frontier for breath-first search
     QueueFrontier frontier;
-    frontier.add(new Agent(start));
+    Agent* start_agent = new Agent(start);
+    allocated_agents.push_back(start_agent);
+    frontier.add(start_agent);
     std::set<std::pair<int, int>> explored;
     Agent* solution = nullptr;
     int count = 0;
@@ -176,7 +179,9 @@ void MazeSolver::run_solver() {
         explored.insert(current->state);
         for (const auto &[action, neighbor] : get_neighbors(current->state, grid)) {
             if(!frontier.contains_state(neighbor) && explored.count(neighbor) == 0) {
-                frontier.add(new Agent(neighbor, current, action));
+                Agent* new_agent = new Agent(neighbor, current, action);
+                allocated_agents.push_back(new_agent);
+                frontier.add(new_agent);
             }
         }
     }
@@ -192,5 +197,9 @@ void MazeSolver::run_solver() {
         }
     } else {
         RCLCPP_WARN(this->get_logger(), "No solution found");
+    }
+
+    for(Agent* agent : allocated_agents) {
+        delete agent;
     }
 }
