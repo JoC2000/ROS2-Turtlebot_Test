@@ -107,6 +107,17 @@ std::pair<double, double> MazeSolver::grid_to_world(const std::pair<int, int> &c
     return std::make_pair(world_x, world_y);
 }
 
+std::pair<int, int> MazeSolver::world_to_grid(double x, double y) {
+    double resolution = current_map_.info.resolution;
+    double origin_x = current_map_.info.origin.position.x;
+    double origin_y = current_map_.info.origin.position.y;
+
+    int i = static_cast<int>((y - origin_y) / resolution);
+    int j = static_cast<int>((x - origin_x) / resolution);
+
+    return {i, j};
+}
+
 void MazeSolver::publish_cmd_vel(const std::pair<int, int> & target_cell) {
     auto [goal_x, goal_y] = grid_to_world(target_cell);
 
@@ -136,7 +147,7 @@ void MazeSolver::publish_cmd_vel(const std::pair<int, int> & target_cell) {
     cmd.linear.x = std::min(0.3, p_linear * distance); // Max speed
     cmd.angular.z = std::clamp(p_angular * angle, -0.2, 0.2); // Rotate towards the goal
 
-    RCLCPP_INFO(this->get_logger(), "Publishing cmd_vel: linear.x = %.2f, angular.z = %.2f", cmd.linear.x, cmd.angular.z);
+    // RCLCPP_INFO(this->get_logger(), "Publishing cmd_vel: linear.x = %.2f, angular.z = %.2f", cmd.linear.x, cmd.angular.z);
     cmd_vel_pub_->publish(cmd);
 }
 
@@ -147,8 +158,11 @@ void MazeSolver::run_solver() {
     std::vector<Agent *> allocated_agents;
     auto [start_i, start_j] = get_robot_cell();
     std::pair<int, int> start = {start_i, start_j};
-    std::pair<int, int> goal = {3.0, 4.0};
 
+    double goal_x_meters = -4.0;
+    double goal_y_meters = 5.0;
+    std::pair<int, int> goal = world_to_grid(goal_x_meters, goal_y_meters);
+    RCLCPP_INFO(this->get_logger(), "Start cell: (%d, %d), Goal cell: (%d, %d)", start_i, start_j, goal.first, goal.second);
     int width = current_map_.info.width;
     int height = current_map_.info.height;
 
@@ -192,6 +206,8 @@ void MazeSolver::run_solver() {
         rclcpp::Rate rate(2);
         for (const auto &cell : path) {
             if (!rclcpp::ok()) break;
+            auto cell_m = grid_to_world(cell);
+            RCLCPP_INFO(this->get_logger(), "Moving to: (%d, %d)", cell_m.first, cell_m.second);
             publish_cmd_vel(cell);
             rate.sleep();
         }
