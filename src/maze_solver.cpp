@@ -130,11 +130,11 @@ void MazeSolver::publish_cmd_vel(const std::pair<int, int> & target_cell) {
 
     geometry_msgs::msg::Twist cmd;
 
-    double p_linear = 0.61; // Proportional gain
+    double p_linear = 0.1; // Proportional gain
     double p_angular = 0.05; // Proportional gain
-
+    
     cmd.linear.x = std::min(0.3, p_linear * distance); // Max speed
-    cmd.angular.z = std::min(0.3 ,p_angular * angle);                  // Rotate towards the goal
+    cmd.angular.z = std::clamp(p_angular * angle, -0.2, 0.2); // Rotate towards the goal
 
     RCLCPP_INFO(this->get_logger(), "Publishing cmd_vel: linear.x = %.2f, angular.z = %.2f", cmd.linear.x, cmd.angular.z);
     cmd_vel_pub_->publish(cmd);
