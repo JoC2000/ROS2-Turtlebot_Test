@@ -49,6 +49,9 @@ class MazeSolver : public rclcpp::Node {
 
         nav_msgs::msg::OccupancyGrid current_map_;
         bool map_received_ = false;
+        double last_distance_e = 0.0;
+        double last_angle_e = 0.0;
+        rclcpp::Time last_cmd_time_;
 };
 
 #endif
