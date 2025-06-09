@@ -33,6 +33,8 @@ class MazeSolver : public rclcpp::Node {
         // A vector of pairs containing the already walked path by the robot
         PathType reconstruct_path(Agent* node);
 
+        std::pair<int, int> world_to_grid(double x, double y);
+
         std::pair<double, double> grid_to_world(const std::pair<int, int> &cell);
 
         // Will publish velocity commands to turtlebot to run to the goal pose
