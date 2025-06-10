@@ -6,8 +6,10 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
+#include <tf2/utils.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <turtlebot_test/solver_utils.hpp>
+#include <nav_msgs/msg/path.hpp>
 
 using namespace std::chrono_literals;
 using ActionNeighborsType = std::vector<std::pair<std::string, std::pair<int, int>>>;
@@ -38,11 +40,13 @@ class MazeSolver : public rclcpp::Node {
         std::pair<double, double> grid_to_world(const std::pair<int, int> &cell);
 
         // Will publish velocity commands to turtlebot to run to the goal pose
-        void publish_cmd_vel(const std::pair<int, int> &cell);
+        void path_follow(const PathType &path);
+        void publish_path(const PathType &path);
 
         void run_solver();
 
         rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_subscriber_;
+        rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
         std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
         std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
@@ -51,7 +55,7 @@ class MazeSolver : public rclcpp::Node {
         bool map_received_ = false;
         double last_distance_e = 0.0;
         double last_angle_e = 0.0;
-        rclcpp::Time last_cmd_time_;
+        double dt = 0.1;
 };
 
 #endif

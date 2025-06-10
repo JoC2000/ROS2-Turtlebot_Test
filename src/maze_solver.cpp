@@ -11,10 +11,9 @@ MazeSolver::MazeSolver(const rclcpp::NodeOptions &options) : Node("maze_solver",
     map_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
         "/map", qos, std::bind(&MazeSolver::map_callback, this, std::placeholders::_1)
     );
-
+    path_pub_ = this->create_publisher<nav_msgs::msg::Path>("planned_path", qos);
     // Publisher to the velocity commands
     cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
-
     // tf buffer and listener to get actual robot pose relative to the map frame
     // Using shared pointer in case another node needs to access the same buffer
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -42,7 +41,7 @@ void MazeSolver::map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
 std::pair<int, int> MazeSolver::get_robot_cell() {
     try {
         // Transform from the robot frame to the map frame
-        auto transform = tf_buffer_->lookupTransform("map", "odom", tf2::TimePointZero);
+        auto transform = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
         // Position of the robot relative to the map frame
         double x = transform.transform.translation.x;
         double y = transform.transform.translation.y;
@@ -106,11 +105,8 @@ std::pair<double, double> MazeSolver::grid_to_world(const std::pair<int, int> &c
     int i = cell.first;
     int j = cell.second;
 
-    RCLCPP_INFO(this->get_logger(), "grid_to_world: resolution=%.6f, origin=(%.2f, %.2f), cell=(%d, %d)",
-    resolution, origin_x, origin_y, i, j);
-
-    double world_x = origin_x + (j + 0.5) * resolution;
-    double world_y = origin_y + (i + 0.5) * resolution;
+    double world_x = origin_x + (j) * resolution;
+    double world_y = origin_y + (i) * resolution;
 
     return std::make_pair(world_x, world_y);
 }
@@ -126,50 +122,116 @@ std::pair<int, int> MazeSolver::world_to_grid(double x, double y) {
     return {i, j};
 }
 
-void MazeSolver::publish_cmd_vel(const std::pair<int, int> & target_cell) {
-    auto [goal_x, goal_y] = grid_to_world(target_cell);
+void MazeSolver::path_follow(const PathType &path) {
+    rclcpp::Rate rate(10); // 10 Hz
 
-    geometry_msgs::msg::TransformStamped tf;
+    for(const auto &cell : path) {
+        auto [target_x, target_y] = grid_to_world(cell);
 
-    try {
-        tf = tf_buffer_-> lookupTransform("map", "base_link", tf2::TimePointZero);
-    } catch (const tf2::TransformException &ex) {
-        RCLCPP_WARN(this->get_logger(), "TF transform failed: %s", ex.what());
-        return;
+        bool target_reached = false;
+
+        double target_theta = 0.0;
+
+        {
+            geometry_msgs::msg::TransformStamped tf;
+
+            try {
+                tf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+            } catch (const tf2::TransformException &ex) {
+                RCLCPP_WARN(this->get_logger(), "TF transform failed: %s", ex.what());
+                continue;
+            }
+
+            double robot_x = tf.transform.translation.x;
+            double robot_y = tf.transform.translation.y;
+            
+            double dx = target_x - robot_x;
+            double dy = target_y - robot_y;
+
+            target_theta = std::atan2(dy, dx);
+            target_theta = std::atan2(std::sin(target_theta), std::cos(target_theta));
+        }
+
+    
+        while (rclcpp::ok() && !target_reached) {
+            geometry_msgs::msg::TransformStamped tf;
+            try {
+                tf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+            } catch (const tf2::TransformException &ex) {
+                RCLCPP_WARN(this->get_logger(), "TF transform failed: %s", ex.what());
+                continue;
+            }
+        
+            double robot_x = tf.transform.translation.x;
+            double robot_y = tf.transform.translation.y;
+
+            double dx = target_x - robot_x;
+            double dy = target_y - robot_y;
+            double distance_error = std::hypot(dx, dy);
+
+            tf2::Quaternion q;
+            tf2::fromMsg(tf.transform.rotation, q);
+            double robot_theta = tf2::getYaw(q);
+
+            double angle_error = target_theta - robot_theta;
+            angle_error = std::atan2(std::sin(angle_error), std::cos(angle_error));
+            
+            double d_distance = (distance_error - last_distance_e) / dt;
+            double d_angle = (angle_error - last_angle_e) / dt;
+            last_distance_e = distance_error;
+            last_angle_e = angle_error;
+
+            geometry_msgs::msg::Twist cmd;
+
+            double Kp_lin = 0.4, Kd_lin = 0.03;
+            double Kp_ang = 0.098, Kd_ang = 0.01;
+
+            double linear_vel = Kp_lin * distance_error + Kd_lin * d_distance;
+            double angular_vel = Kp_ang * angle_error + Kd_ang * d_angle;
+            RCLCPP_INFO(this->get_logger(), "Robot theta: %.2f, Target theta: %.2f, Angle error: %.2f",
+                        robot_theta, target_theta, angle_error);
+            if (std::abs(angle_error) > 0.25) {
+                cmd.angular.z = std::clamp(angular_vel, -0.2, 0.2);
+                cmd.linear.x = 0.0;
+            } else if (distance_error > 0.05) {
+                cmd.linear.x = std::clamp(linear_vel, 0.0, 0.2);
+                cmd.angular.z = std::clamp(angular_vel, -0.1, 0.1);
+            } else {
+                cmd.linear.x = 0.0;
+                cmd.angular.z = 0.0;
+                target_reached = true;
+                RCLCPP_INFO(this->get_logger(), "Target cell reached: (%.2f, %.2f)", target_x, target_y);
+            }
+            cmd_vel_pub_->publish(cmd);
+            rate.sleep();
+        }
     }
 
-    double robot_x = tf.transform.translation.x;
-    double robot_y = tf.transform.translation.y;
+    geometry_msgs::msg::Twist stop_cmd;
+    cmd_vel_pub_->publish(stop_cmd);
+}
 
-    double dx = goal_x - robot_x;
-    double dy = goal_y - robot_y;
+void MazeSolver::publish_path(const PathType &path) {
+    nav_msgs::msg::Path ros_path;
+    ros_path.header.stamp = this->now();
+    ros_path.header.frame_id = "map";  // Match the map frame
 
-    double distance = std::hypot(dx, dy);   // Distance to the goal
-    double angle = std::atan2(dy, dx);      // Angle to the goal
+    for (const auto &cell : path) {
+        auto [x, y] = grid_to_world(cell);
 
-    rclcpp::Time now = this->now();
-    double dt = (last_cmd_time_.nanoseconds() > 0) ? (now - last_cmd_time_).seconds() : 0.1;
-    last_cmd_time_ = now;
+        geometry_msgs::msg::PoseStamped pose;
+        pose.header.stamp = ros_path.header.stamp;
+        pose.header.frame_id = "map";
+        pose.pose.position.x = x;
+        pose.pose.position.y = y;
+        pose.pose.position.z = 0.0;
+        pose.pose.orientation.w = 1.0;  // Neutral rotation
 
-    geometry_msgs::msg::Twist cmd;
+        ros_path.poses.push_back(pose);
+    }
 
-    double p_linear = 0.1; // Proportional gain
-    double d_linear = 0.02;
-    
-    double p_angular = 0.05; // Proportional gain
-    double d_angular = 0.01;
-    
-    last_distance_e = distance;
-    last_angle_e = angle;
-
-    double linear_vel = p_linear * distance + d_linear * (distance - last_distance_e) / dt;
-    double angular_vel = p_angular * angle + d_angular * (angle - last_angle_e) / dt;
-
-    cmd.linear.x = std::clamp(linear_vel, -0.3, 0.3); // Max speed
-    cmd.angular.z = std::clamp(angular_vel, -0.1, 0.1); // Rotate towards the goal
-
-    // RCLCPP_INFO(this->get_logger(), "Publishing cmd_vel: linear.x = %.2f, angular.z = %.2f", cmd.linear.x, cmd.angular.z);
-    cmd_vel_pub_->publish(cmd);
+    path_pub_->publish(ros_path);
+    RCLCPP_INFO(this->get_logger(), "Published path with %lu points", ros_path.poses.size());
 }
 
 void MazeSolver::run_solver() {
@@ -180,8 +242,8 @@ void MazeSolver::run_solver() {
     auto [start_i, start_j] = get_robot_cell();
     std::pair<int, int> start = {start_i, start_j};
 
-    double goal_x_meters = -7.0;
-    double goal_y_meters = 7.0;
+    double goal_x_meters = 2.0;
+    double goal_y_meters = 3.0;
     std::pair<int, int> goal = world_to_grid(goal_x_meters, goal_y_meters);
     RCLCPP_INFO(this->get_logger(), "Start cell: (%d, %d), Goal cell: (%d, %d)", start_i, start_j, goal.first, goal.second);
     int width = current_map_.info.width;
@@ -224,15 +286,8 @@ void MazeSolver::run_solver() {
     if (solution) {
         RCLCPP_INFO(this->get_logger(), "Solution Found!");
         RCLCPP_INFO(this->get_logger(), "Total iterations: %d", count);
-        auto path = reconstruct_path(solution);
-        rclcpp::Rate rate(2);
-        for (const auto &cell : path) {
-            if (!rclcpp::ok()) break;
-            auto cell_m = grid_to_world(cell);
-            RCLCPP_INFO(this->get_logger(), "Moving to: (%.3f, %.3f)", cell_m.first, cell_m.second);
-            publish_cmd_vel(cell);
-            rate.sleep();
-        }
+        PathType path = reconstruct_path(solution);
+        publish_path(path);
         RCLCPP_INFO(this->get_logger(), "Reached goal!");
     } else {
         RCLCPP_WARN(this->get_logger(), "No solution found");
