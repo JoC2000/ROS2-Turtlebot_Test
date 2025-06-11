@@ -31,7 +31,7 @@ private:
     */
     std::pair<int, int> get_robot_cell();
     /**
-     * @brief Get the neighbors of the 
+     * @brief Get the neighbors of the actual Node state.
      * @param state A pair of integers that represents the state of the agent in map cell coordinates x and y.
      * @param grid A vector of vectors of integers, the 2-D representation of the map.
      * @return The neighbors coordinates and the action needed to reach each neighbor.
