@@ -179,16 +179,16 @@ void MazeSolver::run_solver()
     }
 
     // Create a queue frontier for breath-first search
-    QueueFrontier frontier;
+    std::unique_ptr<QueueFrontier> frontier_ptr = std::make_unique<QueueFrontier>();
     Agent* start_agent = new Agent(start);
     allocated_agents.push_back(start_agent);
-    frontier.add(start_agent);
+    frontier_ptr->add(start_agent);
     std::set<std::pair<int, int>> explored;
     Agent* solution = nullptr;
     int count = 0;
-    while(!frontier.empty()) {
+    while(!frontier_ptr->empty()) {
         count++;
-        Agent* current = frontier.remove();
+        Agent* current = frontier_ptr->remove();
         if(current->state == goal) {
             solution = current;
             break;
@@ -196,10 +196,10 @@ void MazeSolver::run_solver()
 
         explored.insert(current->state);
         for (const auto &[action, neighbor] : get_neighbors(current->state, grid)) {
-            if(!frontier.contains_state(neighbor) && explored.count(neighbor) == 0) {
+            if(!frontier_ptr->contains_state(neighbor) && explored.count(neighbor) == 0) {
                 Agent* new_agent = new Agent(neighbor, current, action);
                 allocated_agents.push_back(new_agent);
-                frontier.add(new_agent);
+                frontier_ptr->add(new_agent);
             }
         }
     }
