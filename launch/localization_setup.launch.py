@@ -47,8 +47,8 @@ def generate_launch_description():
         actions=[
             Node(
                 package='turtlebot_test',
-                executable='initial_pose',
-                name='initial_pose',
+                executable='initial_pose_publisher',
+                name='initial_pose_node',
                 output='screen',
                 parameters=[{
                     'x': LaunchConfiguration('x'),
@@ -62,5 +62,5 @@ def generate_launch_description():
     ld = LaunchDescription(ARGUMENTS)
     ld.add_action(ignition)
     ld.add_action(spawn)
-    # ld.add_action(initial_pose)
+    ld.add_action(initial_pose)
     return ld
