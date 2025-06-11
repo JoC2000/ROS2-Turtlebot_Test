@@ -1,9 +1,16 @@
 #include <turtlebot_test/solver_utils.hpp>
 #include <stdexcept>
 
-Agent::Agent(std::pair<int, int> state, Agent* parent, std::string action)
-    : state(state), parent(parent), action(std::move(action)) {}
+//  Agent Implementation -----------------------------------------------------------
+Agent::Agent(
+    std::pair<int, int> state,
+    Agent* parent,
+    std::string action
+)   : state(state)
+    , parent(parent)
+    , action(std::move(action)) {}
 
+// StackFrontier Implementation ----------------------------------------------------
 StackFrontier::StackFrontier() = default;
 
 void StackFrontier::add(Agent* node) {
@@ -32,6 +39,8 @@ Agent* StackFrontier::remove() {
     return node;
 }
 
+
+// QueueFrontier Implementation ----------------------------------------------------
 QueueFrontier::QueueFrontier() = default;
 
 void QueueFrontier::add(Agent* node) {
