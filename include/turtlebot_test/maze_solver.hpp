@@ -70,13 +70,9 @@ private:
     void run_solver();
 
     bool map_received_ = false;
-    double last_distance_e = 0.0;
-    double last_angle_e = 0.0;
-    double dt = 0.1;
 
     rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_subscriber_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
-    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
     std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
     std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
     nav_msgs::msg::OccupancyGrid current_map_;
