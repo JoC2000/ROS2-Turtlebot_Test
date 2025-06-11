@@ -1,5 +1,4 @@
-#ifndef SOLVER_UTILS_H
-#define SOLVER_UTILS_H
+#pragma once
 
 #include <vector>
 #include <queue>
@@ -36,5 +35,3 @@ class QueueFrontier {
     private:
         std::queue<Agent*> frontier;
 };
-
-#endif

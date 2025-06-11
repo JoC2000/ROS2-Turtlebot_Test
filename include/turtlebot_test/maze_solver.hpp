@@ -1,5 +1,4 @@
-#ifndef MAZE_SOLVER_HPP
-#define MAZE_SOLVER_HPP
+#pragma once
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
@@ -57,5 +56,3 @@ class MazeSolver : public rclcpp::Node {
         double last_angle_e = 0.0;
         double dt = 0.1;
 };
-
-#endif
