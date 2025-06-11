@@ -110,7 +110,7 @@ std::pair<double, double> MazeSolver::grid_to_world(const std::pair<int, int> &c
     double world_x = origin_x + (j) * resolution;
     double world_y = origin_y + (i) * resolution;
 
-    return std::make_pair(world_x, world_y);
+    return {world_x, world_y};
 }
 
 std::pair<int, int> MazeSolver::world_to_grid(double x, double y) 
@@ -132,13 +132,13 @@ void MazeSolver::publish_path(const PathType &path)
     ros_path.header.frame_id = "map";  // Match the map frame
 
     for (const auto &cell : path) {
-        auto [x, y] = grid_to_world(cell);
+        auto coordinate = grid_to_world(cell);
 
         geometry_msgs::msg::PoseStamped pose;
         pose.header.stamp = ros_path.header.stamp;
         pose.header.frame_id = "map";
-        pose.pose.position.x = x;
-        pose.pose.position.y = y;
+        pose.pose.position.x = coordinate.first;
+        pose.pose.position.y = coordinate.second;
         pose.pose.position.z = 0.0;
         pose.pose.orientation.w = 1.0;  // Neutral rotation
 
@@ -158,15 +158,14 @@ void MazeSolver::run_solver()
     std::vector<Agent *> allocated_agents;
 
     // Initial robot position
-    auto [start_i, start_j] = get_robot_cell();
-    std::pair<int, int> start = {start_i, start_j};
+    auto start = get_robot_cell();
 
     // Goal - TODO: make it a parameter for user input
     double goal_x_meters = 2.0;
     double goal_y_meters = 3.0;
 
-    std::pair<int, int> goal = world_to_grid(goal_x_meters, goal_y_meters);
-    RCLCPP_INFO(this->get_logger(), "Start cell: (%d, %d), Goal cell: (%d, %d)", start_i, start_j, goal.first, goal.second);
+    auto goal = world_to_grid(goal_x_meters, goal_y_meters);
+    RCLCPP_INFO(this->get_logger(), "Start cell: (%d, %d), Goal cell: (%d, %d)", start.first, start.second, goal.first, goal.second);
     
     int width = current_map_.info.width;
     int height = current_map_.info.height;
