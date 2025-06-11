@@ -43,7 +43,15 @@ ament_target_dependencies(
   nav2_msgs
 )
 
-install(TARGETS ${TARGET} DESTINATION lib/${PROJECT_NAME})
+add_executable(initial_pose_publisher src/initial_pose.cpp)
+ament_target_dependencies(initial_pose_publisher
+  rclcpp
+  tf2
+  tf2_ros
+  geometry_msgs
+)
+
+install(TARGETS ${TARGET} initial_pose_publisher DESTINATION lib/${PROJECT_NAME})
 
 # launch file
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
