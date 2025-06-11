@@ -16,43 +16,68 @@ using PathType = std::vector<std::pair<int, int>>;
 
 // Define Maze Solver node class
 class MazeSolver : public rclcpp::Node {
-    public:
-        explicit MazeSolver(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+public:
+    explicit MazeSolver(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+private:
+    /**
+     * @brief Receives map data and starts solver.
+     * @param msg Shared Ptr to OccupancyGrid type msg.
+    */
+    void map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
+    
+    /**
+     * @brief Get the cell coordinates of the robot.
+     * @return A pair of integers representing the robot position in cell coordinates.
+    */
+    std::pair<int, int> get_robot_cell();
+    /**
+     * @brief Get the neighbors of the 
+     * @param state A pair of integers that represents the state of the agent in map cell coordinates x and y.
+     * @param grid A vector of vectors of integers, the 2-D representation of the map.
+     * @return The neighbors coordinates and the action needed to reach each neighbor.
+    */
+    ActionNeighborsType get_neighbors(
+        const std::pair<int, int> &state,
+        const std::vector<std::vector<int>> &grid
+    );
+    /** 
+     * @brief Reconstruct the path to reach the goal.
+     * @return A vector of pairs of integers representing the path.
+    */
+    PathType reconstruct_path(Agent* node);
+    /** 
+     * @brief Convert from world coordinates (m) to cell coordinates.
+     * @param x X coordinate in meters.
+     * @param y Y coordinates in meters.
+     * @return A pair of integers representing te position in cell coordinates.
+    */
+    std::pair<int, int> world_to_grid(double x, double y);
+    /** 
+     * @brief Convert from cell coordinates to world coordinates (m).
+     * @return A pair of doubles representing te position in world coordinates (m).
+    */
+    std::pair<double, double> grid_to_world(const std::pair<int, int> &cell);
 
-    private:
-        // Map callback function will receive a pointer to OccupancyGrid of Map
-        void map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
-        // Return a pair of coordinates of the robot cell
-        std::pair<int, int> get_robot_cell();
-        // Get neighbors is a vector of pairs containing a string and a pair of coordinates
-        // Function will receive a referente to the state and grid of map
-        // Will return a vector of pairs containing the action and the coordinates of the neighbor
-        ActionNeighborsType get_neighbors(
-            const std::pair<int, int> &state,
-            const std::vector<std::vector<int>> &grid
-        );
-        // A vector of pairs containing the already walked path by the robot
-        PathType reconstruct_path(Agent* node);
+    /** 
+     * @brief Publish created path as Path msg
+     * @param path Vector of pair of integers representing the path created in cell coordinates.
+    */
+    void publish_path(const PathType &path);
 
-        std::pair<int, int> world_to_grid(double x, double y);
+    /** 
+     * @brief Run the algorithm depending on the used class. Frontier approach.
+    */
+    void run_solver();
 
-        std::pair<double, double> grid_to_world(const std::pair<int, int> &cell);
+    bool map_received_ = false;
+    double last_distance_e = 0.0;
+    double last_angle_e = 0.0;
+    double dt = 0.1;
 
-        // Will publish velocity commands to turtlebot to run to the goal pose
-        void path_follow(const PathType &path);
-        void publish_path(const PathType &path);
-
-        void run_solver();
-
-        rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_subscriber_;
-        rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
-        rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
-        std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
-        std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
-
-        nav_msgs::msg::OccupancyGrid current_map_;
-        bool map_received_ = false;
-        double last_distance_e = 0.0;
-        double last_angle_e = 0.0;
-        double dt = 0.1;
+    rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_subscriber_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
+    nav_msgs::msg::OccupancyGrid current_map_;
 };

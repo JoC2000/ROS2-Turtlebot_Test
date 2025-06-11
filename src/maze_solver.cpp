@@ -4,16 +4,20 @@
 #include <chrono>
 
 MazeSolver::MazeSolver(const rclcpp::NodeOptions &options) : Node("maze_solver", options) {
-    // Subscribe to map topic in order to get map info like origin, grid, resolution, etc
+    // Set qos policy to transient_local
     rclcpp::QoS qos(rclcpp::KeepLast(1));
     qos.transient_local();
+    // Use sim_time to avoid issues with tf transform listener
     this->set_parameter(rclcpp::Parameter("use_sim_time", true));
+
+    // Subscribe with qos
     map_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
         "/map", qos, std::bind(&MazeSolver::map_callback, this, std::placeholders::_1)
     );
+
+    // Path publisher with qos
     path_pub_ = this->create_publisher<nav_msgs::msg::Path>("planned_path", qos);
-    // Publisher to the velocity commands
-    cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+    
     // tf buffer and listener to get actual robot pose relative to the map frame
     // Using shared pointer in case another node needs to access the same buffer
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -21,12 +25,8 @@ MazeSolver::MazeSolver(const rclcpp::NodeOptions &options) : Node("maze_solver",
     RCLCPP_INFO(this->get_logger(), "MazeSolver node initialized");
 }
 
-/**
-*  Receives a pointer to OccupancyGrid message
-*  Sets the current_map_ to the received pointer and sets the map_received_ flag to true
-*  Calls the run_solver function
-*/
-void MazeSolver::map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
+void MazeSolver::map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) 
+{
     RCLCPP_INFO(this->get_logger(), "Map received: resolution=%.6f, origin=(%.2f, %.2f), width=%d, height=%d",
     msg->info.resolution,
     msg->info.origin.position.x,
@@ -38,7 +38,8 @@ void MazeSolver::map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
     run_solver();
 }
 
-std::pair<int, int> MazeSolver::get_robot_cell() {
+std::pair<int, int> MazeSolver::get_robot_cell()
+{
     try {
         // Transform from the robot frame to the map frame
         auto transform = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
@@ -53,7 +54,6 @@ std::pair<int, int> MazeSolver::get_robot_cell() {
 
         int i = static_cast<int>((y - origin_y) / resolution);
         int j = static_cast<int>((x - origin_x) / resolution);
-        RCLCPP_INFO(this->get_logger(), "Robot cell: (%d, %d)", i, j);
         return {i, j};
 
     } catch (const tf2::TransformException &ex) {
@@ -64,8 +64,8 @@ std::pair<int, int> MazeSolver::get_robot_cell() {
 
 ActionNeighborsType MazeSolver::get_neighbors(
     const std::pair<int, int> &state,
-    const std::vector<std::vector<int>> &grid
-) {
+    const std::vector<std::vector<int>> &grid)
+{
     ActionNeighborsType result;
     int i = state.first;
     int j = state.second;
@@ -87,7 +87,8 @@ ActionNeighborsType MazeSolver::get_neighbors(
     return result;
 }
 
-PathType MazeSolver::reconstruct_path(Agent* node) {
+PathType MazeSolver::reconstruct_path(Agent* node)
+{
     PathType path;
     while (node) {
         path.push_back(node->state);
@@ -97,7 +98,8 @@ PathType MazeSolver::reconstruct_path(Agent* node) {
     return path;
 }
 
-std::pair<double, double> MazeSolver::grid_to_world(const std::pair<int, int> &cell) {
+std::pair<double, double> MazeSolver::grid_to_world(const std::pair<int, int> &cell) 
+{
     double resolution = current_map_.info.resolution;
     double origin_x = current_map_.info.origin.position.x;
     double origin_y = current_map_.info.origin.position.y;
@@ -111,7 +113,8 @@ std::pair<double, double> MazeSolver::grid_to_world(const std::pair<int, int> &c
     return std::make_pair(world_x, world_y);
 }
 
-std::pair<int, int> MazeSolver::world_to_grid(double x, double y) {
+std::pair<int, int> MazeSolver::world_to_grid(double x, double y) 
+{
     double resolution = current_map_.info.resolution;
     double origin_x = current_map_.info.origin.position.x;
     double origin_y = current_map_.info.origin.position.y;
@@ -122,96 +125,8 @@ std::pair<int, int> MazeSolver::world_to_grid(double x, double y) {
     return {i, j};
 }
 
-void MazeSolver::path_follow(const PathType &path) {
-    rclcpp::Rate rate(10); // 10 Hz
-
-    for(const auto &cell : path) {
-        auto [target_x, target_y] = grid_to_world(cell);
-
-        bool target_reached = false;
-
-        double target_theta = 0.0;
-
-        {
-            geometry_msgs::msg::TransformStamped tf;
-
-            try {
-                tf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
-            } catch (const tf2::TransformException &ex) {
-                RCLCPP_WARN(this->get_logger(), "TF transform failed: %s", ex.what());
-                continue;
-            }
-
-            double robot_x = tf.transform.translation.x;
-            double robot_y = tf.transform.translation.y;
-            
-            double dx = target_x - robot_x;
-            double dy = target_y - robot_y;
-
-            target_theta = std::atan2(dy, dx);
-            target_theta = std::atan2(std::sin(target_theta), std::cos(target_theta));
-        }
-
-    
-        while (rclcpp::ok() && !target_reached) {
-            geometry_msgs::msg::TransformStamped tf;
-            try {
-                tf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
-            } catch (const tf2::TransformException &ex) {
-                RCLCPP_WARN(this->get_logger(), "TF transform failed: %s", ex.what());
-                continue;
-            }
-        
-            double robot_x = tf.transform.translation.x;
-            double robot_y = tf.transform.translation.y;
-
-            double dx = target_x - robot_x;
-            double dy = target_y - robot_y;
-            double distance_error = std::hypot(dx, dy);
-
-            tf2::Quaternion q;
-            tf2::fromMsg(tf.transform.rotation, q);
-            double robot_theta = tf2::getYaw(q);
-
-            double angle_error = target_theta - robot_theta;
-            angle_error = std::atan2(std::sin(angle_error), std::cos(angle_error));
-            
-            double d_distance = (distance_error - last_distance_e) / dt;
-            double d_angle = (angle_error - last_angle_e) / dt;
-            last_distance_e = distance_error;
-            last_angle_e = angle_error;
-
-            geometry_msgs::msg::Twist cmd;
-
-            double Kp_lin = 0.4, Kd_lin = 0.03;
-            double Kp_ang = 0.098, Kd_ang = 0.01;
-
-            double linear_vel = Kp_lin * distance_error + Kd_lin * d_distance;
-            double angular_vel = Kp_ang * angle_error + Kd_ang * d_angle;
-            RCLCPP_INFO(this->get_logger(), "Robot theta: %.2f, Target theta: %.2f, Angle error: %.2f",
-                        robot_theta, target_theta, angle_error);
-            if (std::abs(angle_error) > 0.25) {
-                cmd.angular.z = std::clamp(angular_vel, -0.2, 0.2);
-                cmd.linear.x = 0.0;
-            } else if (distance_error > 0.05) {
-                cmd.linear.x = std::clamp(linear_vel, 0.0, 0.2);
-                cmd.angular.z = std::clamp(angular_vel, -0.1, 0.1);
-            } else {
-                cmd.linear.x = 0.0;
-                cmd.angular.z = 0.0;
-                target_reached = true;
-                RCLCPP_INFO(this->get_logger(), "Target cell reached: (%.2f, %.2f)", target_x, target_y);
-            }
-            cmd_vel_pub_->publish(cmd);
-            rate.sleep();
-        }
-    }
-
-    geometry_msgs::msg::Twist stop_cmd;
-    cmd_vel_pub_->publish(stop_cmd);
-}
-
-void MazeSolver::publish_path(const PathType &path) {
+void MazeSolver::publish_path(const PathType &path) 
+{
     nav_msgs::msg::Path ros_path;
     ros_path.header.stamp = this->now();
     ros_path.header.frame_id = "map";  // Match the map frame
@@ -234,18 +149,25 @@ void MazeSolver::publish_path(const PathType &path) {
     RCLCPP_INFO(this->get_logger(), "Published path with %lu points", ros_path.poses.size());
 }
 
-void MazeSolver::run_solver() {
+void MazeSolver::run_solver() 
+{
     if (!map_received_) return;
     RCLCPP_INFO(this->get_logger(), "Running solver...");
 
+    // Initiate vector of used pointers to free memory when program ends
     std::vector<Agent *> allocated_agents;
+
+    // Initial robot position
     auto [start_i, start_j] = get_robot_cell();
     std::pair<int, int> start = {start_i, start_j};
 
+    // Goal - TODO: make it a parameter for user input
     double goal_x_meters = 2.0;
     double goal_y_meters = 3.0;
+
     std::pair<int, int> goal = world_to_grid(goal_x_meters, goal_y_meters);
     RCLCPP_INFO(this->get_logger(), "Start cell: (%d, %d), Goal cell: (%d, %d)", start_i, start_j, goal.first, goal.second);
+    
     int width = current_map_.info.width;
     int height = current_map_.info.height;
 
@@ -288,11 +210,11 @@ void MazeSolver::run_solver() {
         RCLCPP_INFO(this->get_logger(), "Total iterations: %d", count);
         PathType path = reconstruct_path(solution);
         publish_path(path);
-        RCLCPP_INFO(this->get_logger(), "Reached goal!");
     } else {
         RCLCPP_WARN(this->get_logger(), "No solution found");
     }
 
+    // Free pointers used for path construction
     for(Agent* agent : allocated_agents) {
         delete agent;
     }
