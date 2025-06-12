@@ -40,7 +40,7 @@ std::pair<int, int> MazeSolver::get_robot_cell()
 {
     try {
         // Transform from the robot frame to the map frame
-        auto transform = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+        auto transform = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero, 10s);
         // Position of the robot relative to the map frame
         double x = transform.transform.translation.x;
         double y = transform.transform.translation.y;
