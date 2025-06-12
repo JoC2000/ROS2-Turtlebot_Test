@@ -15,7 +15,7 @@ ARGUMENTS = [
     DeclareLaunchArgument('y', default_value='8.0',
                           description='Initial y position'),
     DeclareLaunchArgument('yaw', default_value='3.14',
-                          description='Initial yaw rotation'),
+                          description='Initial yaw rotation')
 ]
 
 def generate_launch_description():
@@ -54,6 +54,7 @@ def generate_launch_description():
                     'x': LaunchConfiguration('x'),
                     'y': LaunchConfiguration('y'),
                     'yaw': LaunchConfiguration('yaw'),
+                    'use_sim_time': True
                     }]
             )
         ]
