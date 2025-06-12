@@ -7,8 +7,6 @@ MazeSolver::MazeSolver(const rclcpp::NodeOptions &options) : Node("maze_solver",
     // Set qos policy to transient_local
     rclcpp::QoS qos(rclcpp::KeepLast(1));
     qos.transient_local();
-    // Use sim_time to avoid issues with tf transform listener
-    this->set_parameter(rclcpp::Parameter("use_sim_time", true));
 
     // Subscribe with qos
     map_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(

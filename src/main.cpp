@@ -4,7 +4,9 @@
 int main(int argc, char * argv[])
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<MazeSolver>());
+    rclcpp::NodeOptions options;
+    options.append_parameter_override("use_sim_time", true);
+    rclcpp::spin(std::make_shared<MazeSolver>(options));
     rclcpp::shutdown();
     return 0;
 }
