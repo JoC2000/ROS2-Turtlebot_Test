@@ -68,7 +68,7 @@ private:
 };
 
 /**
- * @class StackFrontier
+ * @class QueueFrontier
  * @brief Represents the Breadth First Search (BFS) frontier approach.
 */
 class QueueFrontier {
