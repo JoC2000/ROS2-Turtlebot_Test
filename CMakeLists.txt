@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(turtlebot_test)
+project(turtlebot_planner)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,9 +21,6 @@ find_package(nav2_msgs REQUIRED)
 
 include_directories(include)
 
-# Python packages
-ament_python_install_package(${PROJECT_NAME})
-
 # C++ packages
 set(SOURCES
     # src/initial_pose.cpp
@@ -31,7 +28,9 @@ set(SOURCES
     src/solver_utils.cpp
     src/maze_solver.cpp
 )
+
 set(TARGET SolverNode)
+
 add_executable(${TARGET} ${SOURCES})
 ament_target_dependencies(
   ${TARGET}
@@ -45,8 +44,11 @@ ament_target_dependencies(
 
 install(TARGETS ${TARGET} DESTINATION lib/${PROJECT_NAME})
 
+# Python packages
+ament_python_install_package(${PROJECT_NAME})
+
 install(PROGRAMS
-  turtlebot_test/initial_pose.py
+  turtlebot_planner/initial_pose.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
