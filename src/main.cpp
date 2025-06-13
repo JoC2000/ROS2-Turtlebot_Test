@@ -1,5 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
-#include "turtlebot_test/maze_solver.hpp"
+#include "turtlebot_planner/maze_solver.hpp"
 
 int main(int argc, char * argv[])
 {
