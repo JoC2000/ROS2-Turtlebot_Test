@@ -46,8 +46,8 @@ def generate_launch_description():
         period=3.0,
         actions=[
             Node(
-                package='turtlebot_test',
-                executable='initial_pose_publisher',
+                package='turtlebot_planner',
+                executable='initial_pose.py',
                 name='initial_pose_node',
                 output='screen',
                 parameters=[{
